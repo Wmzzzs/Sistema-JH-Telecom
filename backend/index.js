@@ -3,13 +3,10 @@ const app = express();
 
 // ✅ CORS - Middleware MELHORADO
 app.use((req, res, next) => {
-  // Permitir qualquer origem
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
   
-  // Responder imediatamente a requisições OPTIONS (preflight)
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -19,24 +16,36 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-const orderRoutes = require('./src/routes/orderRoutes');
-const adminRoutes = require('./src/routes/adminRoutes');
-const authRoutes = require('./src/routes/authRoutes');
+try {
+  const orderRoutes = require('./src/routes/orderRoutes');
+  const adminRoutes = require('./src/routes/adminRoutes');
+  const authRoutes = require('./src/routes/authRoutes');
 
-// ✅ Rota de teste
-app.get('/test', (req, res) => {
-  res.json({ message: 'Servidor funcionando!', timestamp: new Date() });
-});
+  // ✅ Rota de teste
+  app.get('/api/test', (req, res) => {
+    res.json({ message: 'Backend funcionando!', timestamp: new Date() });
+  });
 
-app.use('/orders', orderRoutes);
-app.use('/admin', adminRoutes);
-app.use('/auth', authRoutes);
+  app.use('/orders', orderRoutes);
+  app.use('/admin', adminRoutes);
+  app.use('/auth', authRoutes);
+} catch (error) {
+  console.error('❌ Erro ao carregar rotas:', error.message);
+}
 
 // Middleware de erro global
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Erro interno do servidor' });
+  console.error('❌ Erro:', err);
+  res.status(500).json({ error: 'Erro interno do servidor', message: err.message });
 });
+
+// Para desenvolvimento local
+const PORT = process.env.PORT || 5000;
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n✅ Servidor rodando em http://localhost:${PORT}\n`);
+  });
+}
 
 // Exportar para Vercel
 module.exports = app;
