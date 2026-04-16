@@ -19,6 +19,7 @@ const menuItems = document.querySelectorAll('.menu-item');
 const sections = {
   dashboard: document.getElementById('dashboardSection'),
   orders: document.getElementById('ordersSection'),
+  agendamento: document.getElementById('agendamentoSection'),
   users: document.getElementById('usersSection'),
   admin: document.getElementById('adminSection')
 };
@@ -91,23 +92,30 @@ document.getElementById('closeErrorBtn').addEventListener('click', () => {
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   
-  const nome = document.getElementById('loginName').value;
-  const role = document.getElementById('loginRole').value;
+  const email = document.getElementById('loginEmail').value;
+  const senha = document.getElementById('loginSenha').value;
   
-  if (!nome || !role) {
+  if (!email || !senha) {
     showLoginError('Preencha todos os campos');
     return;
   }
   
   try {
     showLoading('Autenticando...');
+    console.log('🔄 Enviando requisição para:', `${API_BASE}/auth/login`);
+    console.log('📤 Dados:', { email, senha: '***' });
+    
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, role })
+      body: JSON.stringify({ email, senha })
     });
     
+    console.log('📨 Resposta status:', response.status);
+    console.log('📨 Resposta ok:', response.ok);
+    
     const data = await response.json();
+    console.log('📨 Dados recebidos:', data);
     
     if (!response.ok) {
       showLoginError(data.error || 'Erro ao fazer login');
@@ -121,8 +129,9 @@ loginForm.addEventListener('submit', async (e) => {
     hideLoading();
     showLoginSuccess();
   } catch (error) {
-    console.error('Erro:', error);
-    showLoginError('Erro ao conectar com o servidor');
+    console.error('❌ Erro de conexão:', error);
+    console.error('❌ Mensagem:', error.message);
+    showLoginError('Erro ao conectar com o servidor: ' + error.message);
     hideLoading();
   }
 });
@@ -313,7 +322,14 @@ function setupQuickActions(users) {
 // ========== ORDENS ==========
 async function loadOrders() {
   try {
-    const response = await fetch(`${API_BASE}/orders`);
+    let url = `${API_BASE}/orders`;
+    
+    // Se for atendente, buscar apenas suas ordens
+    if (currentUser.role === 'atendente') {
+      url = `${API_BASE}/orders/minhas-ordens?atendente=${encodeURIComponent(currentUser.nome)}`;
+    }
+    
+    const response = await fetch(url);
     allOrders = await response.json();
     filteredOrders = [...allOrders];
     currentPage = 1;
@@ -367,6 +383,7 @@ function populateFilters(orders) {
 }
 
 document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+document.getElementById('searchGeral').addEventListener('keyup', applyFilters);
 
 function applyFilters() {
   const status = document.getElementById('filterStatus').value;
@@ -374,6 +391,8 @@ function applyFilters() {
   const fila = document.getElementById('filterFila').value;
   const prioridade = document.getElementById('filterPrioridade').value;
   const bairro = document.getElementById('filterBairro').value;
+  const contrato = document.getElementById('filterContrato').value;
+  const searchGeral = document.getElementById('searchGeral').value.toLowerCase();
   
   filteredOrders = allOrders.filter(order => {
     if (status && order.status !== status) return false;
@@ -381,6 +400,26 @@ function applyFilters() {
     if (fila && order.fila !== fila) return false;
     if (prioridade && order.prioridade !== prioridade) return false;
     if (bairro && !order.bairro?.toLowerCase().includes(bairro.toLowerCase())) return false;
+    if (contrato && !order.contrato?.toLowerCase().includes(contrato.toLowerCase())) return false;
+    
+    // Busca geral em múltiplos campos
+    if (searchGeral) {
+      const camposBusca = [
+        order.cliente?.toLowerCase() || '',
+        order.contrato?.toLowerCase() || '',
+        order.bairro?.toLowerCase() || '',
+        order.fila?.toLowerCase() || '',
+        order.responsavel?.toLowerCase() || '',
+        order.contato?.toLowerCase() || '',
+        order.os?.toString().toLowerCase() || '',
+        order.territorio?.toLowerCase() || '',
+        order.grupo_regiao?.toLowerCase() || ''
+      ];
+      
+      const encontrado = camposBusca.some(campo => campo.includes(searchGeral));
+      if (!encontrado) return false;
+    }
+    
     return true;
   });
   
@@ -414,6 +453,8 @@ function renderOrdersTable() {
     <tr>
       <td class="th-small">${start + index + 1}</td>
       <td>${order.cliente || '-'}</td>
+      <td>${order.contato || '-'}</td>
+      <td>${order.contrato || '-'}</td>
       <td>${order.os || '-'}</td>
       <td>${order.fila || '-'}</td>
       <td>${order.prioridade || '-'}</td>
@@ -425,12 +466,28 @@ function renderOrdersTable() {
       </td>
       <td>${order.responsavel || 'Não atribuído'}</td>
       <td>${order.dias_em_aberto || 0} dias</td>
+      <td>
+        <button class="btn btn-small agendarBtn" data-os="${order.os}" data-contrato="${order.contrato}" data-cliente="${order.cliente}" data-contato="${order.contato}">
+          📅 Agendar
+        </button>
+      </td>
     </tr>
   `).join('');
   
   pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
   prevBtn.disabled = currentPage === 1;
   nextBtn.disabled = currentPage === totalPages;
+  
+  // Adicionar listeners aos botões de agendar
+  document.querySelectorAll('.agendarBtn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const os = e.target.dataset.os;
+      const contrato = e.target.dataset.contrato;
+      const cliente = e.target.dataset.cliente;
+      const contato = e.target.dataset.contato;
+      openAgendamentoModal(os, contrato, cliente, contato);
+    });
+  });
   
   prevBtn.onclick = () => {
     if (currentPage > 1) {
@@ -503,8 +560,15 @@ function renderOnlineStatus(users) {
 // ========== ADMIN ==========
 function setupAdminMenu() {
   const adminMenuBtn = document.getElementById('adminMenuBtn');
+  const agendamentoBtnMenu = document.getElementById('agendamentoBtnMenu');
+  
   if (currentUser.role === 'admin') {
     adminMenuBtn.style.display = 'flex';
+  }
+  
+  // Mostrar agendamento para atendentes
+  if (currentUser.role === 'atendente') {
+    agendamentoBtnMenu.style.display = 'flex';
   }
 }
 
@@ -635,7 +699,300 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
   hideLoading();
 });
 
-// ========== INICIALIZAÇÃO ==========
+// ========== CONFIGURAÇÃO DE ATENDENTES POR TIPO DE SERVIÇO ==========
+let atendentesDisponiveis = [];
+
+async function setupConfigAtendentes() {
+  try {
+    showLoading('Carregando configurações...');
+    
+    // Carregar tipos de serviço
+    const typesRes = await fetch(`${API_BASE}/orders/tipos-servico`);
+    const tiposServico = await typesRes.json();
+    
+    // Carregar configuração atual
+    const configRes = await fetch(`${API_BASE}/orders/atendente-servico`);
+    const configAtual = await configRes.json();
+    
+    // Carregar lista de atendentes (a partir das users)
+    atendentesDisponiveis = ['João', 'Maria', 'Carlos'];
+    
+    hideLoading();
+    
+    // Renderizar a interface
+    const configDiv = document.getElementById('configAtendentesDiv');
+    configDiv.innerHTML = '';
+    
+    tiposServico.forEach(tipo => {
+      const atendentesSelecionados = configAtual[tipo] || [];
+      
+      const div = document.createElement('div');
+      div.className = 'servico-config';
+      
+      let htmlSelects = '<div style="flex: 1;">';
+      htmlSelects += `<div class="servico-config-label">📋 ${tipo}</div>`;
+      htmlSelects += '<select multiple class="servico-config-select" data-tipo="' + tipo + '">';
+      
+      atendentesDisponiveis.forEach(atendente => {
+        const selected = atendentesSelecionados.includes(atendente) ? 'selected' : '';
+        htmlSelects += `<option value="${atendente}" ${selected}>${atendente}</option>`;
+      });
+      
+      htmlSelects += '</select>';
+      htmlSelects += '<small style="color: var(--text-secondary); margin-top: 5px; display: block;">Ctrl+Click para selecionar múltiplos</small>';
+      htmlSelects += '</div>';
+      
+      div.innerHTML = htmlSelects;
+      configDiv.appendChild(div);
+    });
+    
+  } catch (error) {
+    console.error('Erro ao carregar configurações:', error);
+    hideLoading();
+    showError('Erro ao carregar configurações de atendentes');
+  }
+}
+
+async function saveConfigAtendentes() {
+  try {
+    showLoading('Salvando configuração...');
+    
+    const selects = document.querySelectorAll('.servico-config-select');
+    const mapeamento = {};
+    
+    selects.forEach(select => {
+      const tipo = select.dataset.tipo;
+      const atendentes = Array.from(select.selectedOptions).map(opt => opt.value);
+      mapeamento[tipo] = atendentes;
+    });
+    
+    const response = await fetch(`${API_BASE}/orders/atendente-servico`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mapeamento })
+    });
+    
+    const data = await response.json();
+    hideLoading();
+    
+    if (response.ok) {
+      showSuccess(`Configuração salva! ${data.totalOrdensDist} ordens foram redistribuídas.`);
+      await loadOrders();
+    } else {
+      showError(data.error || 'Erro ao salvar configuração');
+    }
+  } catch (error) {
+    console.error('Erro:', error);
+    hideLoading();
+    showError('Erro ao salvar configuração');
+  }
+}
+
+document.getElementById('salvarConfigBtn').addEventListener('click', saveConfigAtendentes);
+
+// Carregar configuração ao clicar no admin
+let configAtendentesLoaded = false;
+menuItems.forEach(item => {
+  item.addEventListener('click', () => {
+    const page = item.dataset.page;
+    
+    if (page === 'admin' && currentUser.role === 'admin' && !configAtendentesLoaded) {
+      setupConfigAtendentes();
+      configAtendentesLoaded = true;
+    }
+  });
+});
+
+// ========== AGENDAMENTO ===========
+// ========== MODAL DE AGENDAMENTO ==========
+const agendamentoModal = document.getElementById('agendamentoModal');
+const agendamentoForm = document.getElementById('agendamentoForm');
+
+function openAgendamentoModal(os, contrato, cliente, telefone) {
+  document.getElementById('modalContrato').value = contrato;
+  document.getElementById('modalOS').value = os;
+  document.getElementById('modalCliente').value = cliente;
+  document.getElementById('modalTelefone').value = telefone;
+  document.getElementById('modalDataAgendamento').value = '';
+  document.getElementById('modalHoraAgendamento').value = '';
+  document.getElementById('modalObservacoes').value = '';
+  
+  agendamentoModal.style.display = 'flex';
+}
+
+function closeAgendamentoModal() {
+  agendamentoModal.style.display = 'none';
+}
+
+document.getElementById('cancelAgendamentoBtn').addEventListener('click', closeAgendamentoModal);
+
+// Fechar modal ao clicar fora
+agendamentoModal.addEventListener('click', (e) => {
+  if (e.target === agendamentoModal) {
+    closeAgendamentoModal();
+  }
+});
+
+// Submeter formulário de agendamento
+agendamentoForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const os = document.getElementById('modalOS').value;
+  const data_agendamento = document.getElementById('modalDataAgendamento').value;
+  const hora = document.getElementById('modalHoraAgendamento').value;
+  const observacoes = document.getElementById('modalObservacoes').value;
+  
+  if (!os || !data_agendamento || !hora) {
+    showError('Preencha os campos obrigatórios (OS, data e hora)');
+    return;
+  }
+  
+  try {
+    showLoading('Agendando ordem...');
+    const response = await fetch(`${API_BASE}/orders/agendar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ os, data_agendamento, hora, observacoes })
+    });
+    
+    const data = await response.json();
+    hideLoading();
+    
+    if (response.ok) {
+      showSuccess('Ordem agendada com sucesso!');
+      closeAgendamentoModal();
+      loadAgendamentos();
+      // Recarregar tabela de ordens se estiver visível
+      if (document.getElementById('ordersSection').style.display !== 'none') {
+        renderOrdersTable();
+      }
+    } else {
+      showError(data.error || 'Erro ao agendar ordem');
+    }
+  } catch (error) {
+    console.error('Erro:', error);
+    hideLoading();
+    showError('Erro ao agendar ordem');
+  }
+});
+
+// Carregar agendamentos na página de agendamentos
+// ========== AGENDAMENTOS ==========
+let allAgendamentos = [];
+let filteredAgendamentos = [];
+
+async function loadAgendamentos() {
+  try {
+    let url = `${API_BASE}/orders/agendamentos`;
+    
+    // Se for atendente, filtrar por suas ordens
+    if (currentUser.role === 'atendente') {
+      url = `${API_BASE}/orders/agendamentos?atendente=${encodeURIComponent(currentUser.nome)}`;
+    }
+    
+    const response = await fetch(url);
+    allAgendamentos = await response.json();
+    
+    const agendamentosSection = document.getElementById('agendamentoSection');
+    
+    if (agendamentosSection.style.display === 'none') {
+      return; // Não carregar se a página não está visível
+    }
+    
+    // Preencher o select de responsáveis
+    populateAgendamentoFilters();
+    
+    // Aplicar filtros e exibir
+    applyAgendamentosFilters();
+  } catch (error) {
+    console.error('Erro ao carregar agendamentos:', error);
+  }
+}
+
+function populateAgendamentoFilters() {
+  const responsavelSelect = document.getElementById('filterAgendamentoResponsavel');
+  const responsaveis = [...new Set(allAgendamentos.map(a => a.responsavel).filter(Boolean))];
+  
+  responsavelSelect.innerHTML = '<option value="">Todos</option>';
+  responsaveis.forEach(r => {
+    const option = document.createElement('option');
+    option.value = r;
+    option.textContent = r;
+    responsavelSelect.appendChild(option);
+  });
+}
+
+function applyAgendamentosFilters() {
+  const cliente = document.getElementById('filterAgendamentoCliente').value.toLowerCase();
+  const responsavel = document.getElementById('filterAgendamentoResponsavel').value;
+  const dataDe = document.getElementById('filterAgendamentoDataDe').value;
+  const dataAte = document.getElementById('filterAgendamentoDataAte').value;
+  
+  filteredAgendamentos = allAgendamentos.filter(agendamento => {
+    if (cliente && !agendamento.cliente?.toLowerCase().includes(cliente)) return false;
+    if (responsavel && agendamento.responsavel !== responsavel) return false;
+    
+    if (dataDe) {
+      const dataAgend = new Date(agendamento.data_agendamento);
+      const dataFiltro = new Date(dataDe);
+      if (dataAgend < dataFiltro) return false;
+    }
+    
+    if (dataAte) {
+      const dataAgend = new Date(agendamento.data_agendamento);
+      const dataFiltro = new Date(dataAte);
+      if (dataAgend > dataFiltro) return false;
+    }
+    
+    return true;
+  });
+  
+  renderAgendamentosTable();
+}
+
+function renderAgendamentosTable() {
+  const tbody = document.getElementById('agendamentosTableBody');
+  const noMsg = document.getElementById('noAgendamentosMsg');
+  
+  if (filteredAgendamentos.length === 0) {
+    tbody.innerHTML = '';
+    noMsg.style.display = 'block';
+    return;
+  }
+  
+  noMsg.style.display = 'none';
+  tbody.innerHTML = filteredAgendamentos.map(agendamento => `
+    <tr>
+      <td>${agendamento.contrato || agendamento.os || '-'}</td>
+      <td>${agendamento.cliente || '-'}</td>
+      <td>${agendamento.contato || '-'}</td>
+      <td>${agendamento.data_agendamento || '-'}</td>
+      <td>${agendamento.hora || '-'}</td>
+      <td>${agendamento.responsavel || '-'}</td>
+      <td>${agendamento.observacoes || '-'}</td>
+    </tr>
+  `).join('');
+}
+
+// Event listeners dos filtros
+document.getElementById('applyAgendamentosFiltersBtn').addEventListener('click', applyAgendamentosFilters);
+document.getElementById('filterAgendamentoCliente').addEventListener('keyup', applyAgendamentosFilters);
+document.getElementById('filterAgendamentoResponsavel').addEventListener('change', applyAgendamentosFilters);
+document.getElementById('filterAgendamentoDataDe').addEventListener('change', applyAgendamentosFilters);
+document.getElementById('filterAgendamentoDataAte').addEventListener('change', applyAgendamentosFilters);
+
+// Handler para quando clica no menu Agendamento
+menuItems.forEach(item => {
+  item.addEventListener('click', () => {
+    const page = item.dataset.page;
+    
+    if (page === 'agendamento' && currentUser) {
+      loadAgendamentos();
+    }
+  });
+});
+
+// ========== INICIALIZAÇÃO =========
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth();
 });

@@ -1,17 +1,23 @@
 const users = require('../data/users');
 
-// 🔐 LOGIN simples (sem JWT por enquanto)
+// 🔐 LOGIN com Email e Senha
 exports.login = (req, res) => {
-  const { nome, role } = req.body;
+  const { email, senha } = req.body;
 
-  if (!nome || !role) {
-    return res.status(400).json({ error: 'Campos "nome" e "role" são obrigatórios' });
+  if (!email || !senha) {
+    return res.status(400).json({ error: 'Email e senha são obrigatórios' });
   }
 
-  const user = users.find(u => u.nome === nome && u.role === role);
+  // Buscar usuário por email
+  const user = users.find(u => u.email === email);
 
   if (!user) {
-    return res.status(401).json({ error: 'Credenciais inválidas' });
+    return res.status(401).json({ error: 'Email ou senha inválidos' });
+  }
+
+  // Validar senha (comparação simples - em produção usar bcrypt)
+  if (user.senha !== senha) {
+    return res.status(401).json({ error: 'Email ou senha inválidos' });
   }
 
   res.json({
@@ -19,15 +25,17 @@ exports.login = (req, res) => {
     user: {
       id: user.id,
       nome: user.nome,
-      role: user.role
+      email: user.email,
+      role: user.role,
+      online: user.online
     }
   });
 };
 
 // 📋 LISTAR USUÁRIOS
 exports.getUsers = (req, res) => {
-  const result = users.map(({ id, nome, role, online }) => ({
-    id, nome, role, online
+  const result = users.map(({ id, nome, email, role, online }) => ({
+    id, nome, email, role, online
   }));
   res.json(result);
 };

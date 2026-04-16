@@ -5,6 +5,7 @@ const csv = require('csv-parser');
 const { differenceInDays } = require('date-fns');
 
 let orders = [];
+let atendentePorServico = {}; // { tipo_servico: ['João', 'Maria'] }
 
 // 🔁 Converter data serial do Excel para JS
 function excelDateToJSDate(serial) {
@@ -52,6 +53,7 @@ exports.importExcel = (req, res) => {
         cliente:          item.CLIENTE,
         contato:          item.CONTATO,
         fila:             item.FILA,
+        tipo_servico:     item.FILA || 'Geral', // Usar fila como tipo de serviço
         bairro:           item.BAIRRO,
         contrato:         item.CODIGO_CONTRATO,
         os:               item.NUMERO_DA_OS,
@@ -164,3 +166,141 @@ exports.importFinalizados = (req, res) => {
 
 // 📤 EXPORTAR ORDERS (uso interno)
 exports.getOrdersData = () => orders;
+
+// 📅 AGENDAR ORDEM (Atendente)
+exports.agendar = (req, res) => {
+  const { os, data_agendamento, hora, observacoes } = req.body;
+
+  if (!os || !data_agendamento || !hora) {
+    return res.status(400).json({ error: 'OS, data e hora são obrigatórios' });
+  }
+
+  // Buscar ordem
+  const order = orders.find(o => Number(o.os) === Number(os));
+
+  if (!order) {
+    return res.status(404).json({ error: 'Ordem não encontrada' });
+  }
+
+  // Adicionar informações de agendamento
+  order.data_agendamento_confirmada = data_agendamento;
+  order.hora_agendamento = hora;
+  order.observacoes_agendamento = observacoes || null;
+  order.status_agendamento = 'agendado';
+
+  res.json({
+    message: 'Ordem agendada com sucesso',
+    order: {
+      os: order.os,
+      cliente: order.cliente,
+      data_agendamento: data_agendamento,
+      hora: hora,
+      responsavel: order.responsavel
+    }
+  });
+};
+
+// 📋 LISTAR AGENDAMENTOS
+exports.getAgendamentos = (req, res) => {
+  const { atendente } = req.query;
+  
+  let agendamentos = orders
+    .filter(o => o.status_agendamento === 'agendado')
+    .map(o => ({
+      os: o.os,
+      contrato: o.contrato,
+      cliente: o.cliente,
+      contato: o.contato,
+      data_agendamento: o.data_agendamento_confirmada,
+      hora: o.hora_agendamento,
+      responsavel: o.responsavel,
+      observacoes: o.observacoes_agendamento,
+      status: o.status
+    }));
+  
+  // Se foi enviado um atendente (atendentes veem apenas seus), filtrar
+  if (atendente) {
+    agendamentos = agendamentos.filter(a => a.responsavel === atendente);
+  }
+
+  res.json(agendamentos);
+};
+
+// 🔧 EXTRAIR TIPOS DE SERVIÇO ÚNICOS (para admin configurar)
+exports.getTiposServico = (req, res) => {
+  const tipos = [...new Set(orders.map(o => o.tipo_servico || o.fila).filter(t => t))];
+  res.json(tipos);
+};
+
+// ⚙️ ADMIN: SETAR ATENDENTES POR TIPO DE SERVIÇO
+exports.setAtendentePorServico = (req, res) => {
+  const { mapeamento } = req.body; // { tipo_servico: [atendentes] }
+  atendentePorServico = mapeamento;
+  distribuirOrdens(); // Redistribuir após mudança
+  res.json({ 
+    message: 'Mapeamento atualizado e ordens redistribuídas',
+    mapeamento: atendentePorServico,
+    totalOrdensDist: orders.filter(o => o.responsavel).length
+  });
+};
+
+// ⚙️ ADMIN: OBTER MAPEAMENTO ATUAL
+exports.getAtendentePorServico = (req, res) => {
+  res.json(atendentePorServico);
+};
+
+// 🔄 DISTRIBUIR ORDENS POR TIPO DE SERVIÇO E ATENDENTE (round-robin)
+function distribuirOrdens() {
+  // Reset responsável para ordens pendentes
+  orders.forEach(o => {
+    if (o.status_agendamento !== 'cancelado' && !o.status_cancelado) {
+      o.responsavel = null;
+    }
+  });
+  
+  // Agrupar por tipo de serviço
+  const ordensPorServico = {};
+  orders.forEach(ordem => {
+    const tipo = ordem.tipo_servico || ordem.fila || 'Indefinido';
+    if (!ordensPorServico[tipo]) {
+      ordensPorServico[tipo] = [];
+    }
+    // Somente ordens não canceladas/finalizadas
+    if (!ordem.status_cancelado && ordem.status_agendamento !== 'cancelado') {
+      ordensPorServico[tipo].push(ordem);
+    }
+  });
+
+  // Para cada tipo de serviço, distribuir entre atendentes (round-robin)
+  Object.keys(ordensPorServico).forEach(tipo => {
+    const atendentes = atendentePorServico[tipo] || [];
+    if (atendentes.length === 0) return;
+
+    const ordensDoTipo = ordensPorServico[tipo];
+    let indiceAtendente = 0;
+
+    ordensDoTipo.forEach((ordem) => {
+      ordem.responsavel = atendentes[indiceAtendente % atendentes.length];
+      indiceAtendente++;
+    });
+  });
+}
+
+// 👤 ATENDENTE: OBTER PRÓPRIAS ORDENS (sem canceladas/finalizadas)
+exports.getMinhasOrdens = (req, res) => {
+  const { atendente } = req.query;
+  
+  if (!atendente) {
+    return res.json([]);
+  }
+
+  const minhasOrdens = orders.filter(o => {
+    const ehResponsavel = o.responsavel === atendente;
+    const naoCancelada = !o.status_cancelado && o.status_agendamento !== 'cancelado';
+    const naoFinalizada = o.status !== 'finalizado';
+    
+    return ehResponsavel && naoCancelada && naoFinalizada;
+  });
+
+  res.json(minhasOrdens);
+};
