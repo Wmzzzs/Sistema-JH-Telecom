@@ -8,7 +8,7 @@ const users = [
     email: "admin@jhtelecom.com", 
     senha: "admin123", // Em produção, fazer hash com bcrypt
     role: "admin", 
-    online: true 
+    online: false 
   },
   { 
     id: 2, 
@@ -16,7 +16,7 @@ const users = [
     email: "joao@jhtelecom.com", 
     senha: "joao123", 
     role: "atendente", 
-    online: true 
+    online: false 
   },
   { 
     id: 3, 
@@ -24,7 +24,7 @@ const users = [
     email: "maria@jhtelecom.com", 
     senha: "maria123", 
     role: "atendente", 
-    online: true 
+    online: false 
   },
   { 
     id: 4, 

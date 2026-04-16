@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Frontend Server",
+            "program": "${workspaceFolder}/frontend/server.js",
+            "cwd": "${workspaceFolder}/frontend",
+            "internalConsoleOptions": "neverOpen"
+        }
+    ]
+}

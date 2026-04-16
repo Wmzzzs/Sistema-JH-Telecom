@@ -170,10 +170,20 @@ p {
   transform: translateY(-1px);
 }
 
+/* Navbar oculto quando usuário não está logado */
+.navbar.hidden {
+  display: none;
+}
+
 /* ========== CONTAINER ========== */
 .container {
   width: 100%;
-  min-height: calc(100vh - 70px);
+  height: calc(100vh - 70px);
+}
+
+/* Quando navbar está escondido, container tem altura total */
+.navbar.hidden ~ .container {
+  height: 100vh;
 }
 
 .page {
@@ -196,7 +206,8 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 70px);
+  width: 100%;
+  height: 100%;
   background: var(--bg-gradient);
   padding: 20px;
   position: relative;

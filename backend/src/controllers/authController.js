@@ -20,6 +20,9 @@ exports.login = (req, res) => {
     return res.status(401).json({ error: 'Email ou senha inválidos' });
   }
 
+  // ✅ Marcar usuário como online ao fazer login
+  user.online = true;
+
   res.json({
     message: 'Login realizado com sucesso',
     user: {
@@ -38,4 +41,26 @@ exports.getUsers = (req, res) => {
     id, nome, email, role, online
   }));
   res.json(result);
+};
+
+// 🚪 LOGOUT - Marcar usuário como offline
+exports.logout = (req, res) => {
+  const { id } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: 'ID do usuário é obrigatório' });
+  }
+
+  const user = users.find(u => u.id == id);
+
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+
+  // ✅ Marcar usuário como offline ao fazer logout
+  user.online = false;
+
+  res.json({
+    message: `Usuário ${user.nome} desconectado com sucesso`
+  });
 };

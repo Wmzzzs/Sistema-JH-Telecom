@@ -105,31 +105,7 @@ loginForm.addEventListener('submit', async (e) => {
     console.log('🔄 Enviando requisição para:', `${API_BASE}/auth/login`);
     console.log('📤 Dados:', { email, senha: '***' });
     
-    // Simulação de login para teste (remover quando o backend estiver funcionando)
-    const mockUsers = [
-      { email: 'admin@jhtelecom.com', senha: 'admin123', user: { id: 1, nome: 'Admin', email: 'admin@jhtelecom.com', role: 'admin', online: true } },
-      { email: 'joao@jhtelecom.com', senha: 'joao123', user: { id: 2, nome: 'João', email: 'joao@jhtelecom.com', role: 'atendente', online: true } },
-      { email: 'maria@jhtelecom.com', senha: 'maria123', user: { id: 3, nome: 'Maria', email: 'maria@jhtelecom.com', role: 'atendente', online: true } }
-    ];
-    
-    const userData = mockUsers.find(u => u.email === email && u.senha === senha);
-    
-    if (userData) {
-      // Simular delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('📨 Resposta simulada - status: 200');
-      console.log('📨 Dados simulados:', { message: 'Login realizado com sucesso', user: userData.user });
-      
-      currentUser = userData.user;
-      localStorage.setItem('user', JSON.stringify(currentUser));
-      
-      hideLoading();
-      showLoginSuccess();
-      return;
-    }
-    
-    // Se não encontrou usuário, tentar conexão real com o backend
+    // Conectar ao backend real
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -167,6 +143,7 @@ function showLoginError(message) {
 }
 
 function showLoginSuccess() {
+  document.querySelector('.navbar').classList.remove('hidden');
   loginPage.style.display = 'none';
   dashboardPage.style.display = 'grid';
   updateUserInfo();
@@ -181,7 +158,22 @@ function updateUserInfo() {
   }
 }
 
-logoutBtn.addEventListener('click', () => {
+logoutBtn.addEventListener('click', async () => {
+  // 📤 Notificar backend que usuário está offline
+  if (currentUser && currentUser.id) {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentUser.id })
+      });
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  }
+
+  // Esconder navbar e mostrar login
+  document.querySelector('.navbar').classList.add('hidden');
   currentUser = null;
   localStorage.removeItem('user');
   loginPage.style.display = 'flex';
@@ -192,6 +184,9 @@ logoutBtn.addEventListener('click', () => {
 
 // Verificar se usuário está logado ao carregar
 function checkAuth() {
+  // Esconder navbar por padrão (só mostrar quando logado)
+  document.querySelector('.navbar').classList.add('hidden');
+  
   const saved = localStorage.getItem('user');
   if (saved) {
     currentUser = JSON.parse(saved);
