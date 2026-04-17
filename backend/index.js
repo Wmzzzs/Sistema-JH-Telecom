@@ -1,6 +1,9 @@
 const express = require('express');
 const app = express();
 
+// ✅ Inicializar banco de dados
+require('./src/db/database');
+
 // ✅ CORS - Middleware MELHORADO
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');

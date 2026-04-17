@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const csv = require('csv-parser');
 const { differenceInDays } = require('date-fns');
+const { salvarAgendamento, listarAgendamentos, atualizarAgendamento } = require('../db/agendamentosDB');
 
 let orders = [];
 let atendentePorServico = {}; // { tipo_servico: ['João', 'Maria'] }
@@ -182,11 +183,27 @@ exports.agendar = (req, res) => {
     return res.status(404).json({ error: 'Ordem não encontrada' });
   }
 
-  // Adicionar informações de agendamento
+  // Adicionar informações de agendamento na memória (para compatibilidade)
   order.data_agendamento_confirmada = data_agendamento;
   order.hora_agendamento = hora;
   order.observacoes_agendamento = observacoes || null;
   order.status_agendamento = 'agendado';
+
+  // ✅ Salvar no banco de dados também
+  salvarAgendamento({
+    os: String(os),
+    contrato: order.contrato,
+    cliente: order.cliente,
+    contato: order.contato,
+    data_agendamento,
+    hora,
+    responsavel: order.responsavel,
+    observacoes
+  }, (result) => {
+    if (!result.success) {
+      console.error('Erro ao salvar no DB:', result.error);
+    }
+  });
 
   res.json({
     message: 'Ordem agendada com sucesso',
@@ -202,28 +219,16 @@ exports.agendar = (req, res) => {
 
 // 📋 LISTAR AGENDAMENTOS
 exports.getAgendamentos = (req, res) => {
-  const { atendente } = req.query;
+  const { atendente, data_inicio, data_fim } = req.query;
   
-  let agendamentos = orders
-    .filter(o => o.status_agendamento === 'agendado')
-    .map(o => ({
-      os: o.os,
-      contrato: o.contrato,
-      cliente: o.cliente,
-      contato: o.contato,
-      data_agendamento: o.data_agendamento_confirmada,
-      hora: o.hora_agendamento,
-      responsavel: o.responsavel,
-      observacoes: o.observacoes_agendamento,
-      status: o.status
-    }));
-  
-  // Se foi enviado um atendente (atendentes veem apenas seus), filtrar
-  if (atendente) {
-    agendamentos = agendamentos.filter(a => a.responsavel === atendente);
-  }
-
-  res.json(agendamentos);
+  // Buscar agendamentos do banco de dados (com callback)
+  listarAgendamentos({
+    responsavel: atendente || null,
+    data_inicio,
+    data_fim
+  }, (agendamentos) => {
+    res.json(agendamentos);
+  });
 };
 
 // 🔧 EXTRAIR TIPOS DE SERVIÇO ÚNICOS (para admin configurar)
@@ -303,4 +308,101 @@ exports.getMinhasOrdens = (req, res) => {
   });
 
   res.json(minhasOrdens);
+};
+
+// 📊 EXPORTAR RELATÓRIO DE AGENDAMENTOS (Excel)
+exports.exportarAgendamentos = (req, res) => {
+  try {
+    const { atendente, data_inicio, data_fim } = req.query;
+    
+    // Buscar agendamentos do banco de dados
+    listarAgendamentos({
+      responsavel: atendente || null,
+      data_inicio,
+      data_fim
+    }, (agendamentos) => {
+      if (agendamentos.length === 0) {
+        return res.status(400).json({ error: 'Nenhum agendamento encontrado com esses critérios' });
+      }
+      
+      // Criar workbook
+      const ws = XLSX.utils.json_to_sheet(agendamentos, {
+        header: ['id', 'os', 'contrato', 'cliente', 'contato', 'data_agendamento', 'hora', 'responsavel', 'observacoes', 'status', 'criado_em'],
+        defval: ''
+      });
+      
+      // Ajustar largura das colunas
+      ws['!cols'] = [
+        { wch: 8 },  // id
+        { wch: 12 }, // os
+        { wch: 15 }, // contrato
+        { wch: 25 }, // cliente
+        { wch: 20 }, // contato
+        { wch: 15 }, // data_agendamento
+        { wch: 10 }, // hora
+        { wch: 15 }, // responsavel
+        { wch: 30 }, // observacoes
+        { wch: 12 }, // status
+        { wch: 18 }  // criado_em
+      ];
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
+      
+      // Gerar arquivo
+      const filename = `Agendamentos_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filepath = path.join(__dirname, '../../files', filename);
+      
+      // Criar diretório se não existir
+      if (!fs.existsSync(path.join(__dirname, '../../files'))) {
+        fs.mkdirSync(path.join(__dirname, '../../files'), { recursive: true });
+      }
+      
+      XLSX.writeFile(wb, filepath);
+      
+      res.download(filepath, filename, (err) => {
+        if (err) {
+          console.error('Erro ao fazer download:', err);
+        }
+        // Deletar arquivo após download
+        fs.unlink(filepath, (unlinkErr) => {
+          if (unlinkErr) console.error('Erro ao deletar arquivo temporário:', unlinkErr);
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Erro ao exportar agendamentos:', error);
+    res.status(500).json({ error: 'Erro ao exportar agendamentos' });
+  }
+};
+
+// 📊 EXPORTAR RELATÓRIO DE AGENDAMENTOS (CSV)
+exports.exportarAgendamentosCSV = (req, res) => {
+  try {
+    const { atendente, data_inicio, data_fim } = req.query;
+    
+    // Buscar agendamentos do banco de dados
+    listarAgendamentos({
+      responsavel: atendente || null,
+      data_inicio,
+      data_fim
+    }, (agendamentos) => {
+      if (agendamentos.length === 0) {
+        return res.status(400).json({ error: 'Nenhum agendamento encontrado' });
+      }
+      
+      // Criar CSV
+      const ws = XLSX.utils.json_to_sheet(agendamentos);
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      
+      const filename = `Agendamentos_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      res.header('Content-Type', 'text/csv; charset=utf-8');
+      res.header('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(csv);
+    });
+  } catch (error) {
+    console.error('Erro ao exportar para CSV:', error);
+    res.status(500).json({ error: 'Erro ao exportar agendamentos' });
+  }
 };

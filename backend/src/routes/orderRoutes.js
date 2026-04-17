@@ -11,12 +11,16 @@ const {
   getTiposServico,
   setAtendentePorServico,
   getAtendentePorServico,
-  getMinhasOrdens
+  getMinhasOrdens,
+  exportarAgendamentos,
+  exportarAgendamentosCSV
 } = require('../controllers/orderController');
 
 // GET
 router.get('/', getOrders);
 router.get('/agendamentos', getAgendamentos);
+router.get('/agendamentos/exportar/excel', exportarAgendamentos);
+router.get('/agendamentos/exportar/csv', exportarAgendamentosCSV);
 router.get('/tipos-servico', getTiposServico);
 router.get('/atendente-servico', getAtendentePorServico);
 router.get('/minhas-ordens', getMinhasOrdens);
