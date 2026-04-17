@@ -591,6 +591,8 @@ function setupAdminMenu() {
   
   if (currentUser.role === 'admin') {
     adminMenuBtn.style.display = 'flex';
+    // ✅ Admin também pode ver agendamentos
+    agendamentoBtnMenu.style.display = 'flex';
   }
   
   // Mostrar agendamento para atendentes
@@ -950,13 +952,24 @@ function populateAgendamentoFilters() {
 }
 
 function applyAgendamentosFilters() {
-  const cliente = document.getElementById('filterAgendamentoCliente').value.toLowerCase();
+  const buscaGeral = document.getElementById('searchAgendamentosGeral').value.toLowerCase();
   const responsavel = document.getElementById('filterAgendamentoResponsavel').value;
   const dataDe = document.getElementById('filterAgendamentoDataDe').value;
   const dataAte = document.getElementById('filterAgendamentoDataAte').value;
   
   filteredAgendamentos = allAgendamentos.filter(agendamento => {
-    if (cliente && !agendamento.cliente?.toLowerCase().includes(cliente)) return false;
+    // Busca geral em múltiplos campos
+    if (buscaGeral) {
+      const buscaEmCampos = (
+        agendamento.cliente?.toLowerCase().includes(buscaGeral) ||
+        agendamento.contrato?.toLowerCase().includes(buscaGeral) ||
+        agendamento.responsavel?.toLowerCase().includes(buscaGeral) ||
+        agendamento.contato?.toLowerCase().includes(buscaGeral) ||
+        agendamento.os?.toString().includes(buscaGeral)
+      );
+      if (!buscaEmCampos) return false;
+    }
+    
     if (responsavel && agendamento.responsavel !== responsavel) return false;
     
     if (dataDe) {
@@ -1056,7 +1069,7 @@ function exportarAgendamentosCSV() {
 
 // Event listeners dos filtros
 document.getElementById('applyAgendamentosFiltersBtn').addEventListener('click', applyAgendamentosFilters);
-document.getElementById('filterAgendamentoCliente').addEventListener('keyup', applyAgendamentosFilters);
+document.getElementById('searchAgendamentosGeral').addEventListener('keyup', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoResponsavel').addEventListener('change', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoDataDe').addEventListener('change', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoDataAte').addEventListener('change', applyAgendamentosFilters);

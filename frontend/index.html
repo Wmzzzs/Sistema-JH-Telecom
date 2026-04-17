@@ -277,17 +277,17 @@
         <!-- AGENDAMENTO SECTION -->
         <section id="agendamentoSection" class="section" style="display: none;">
           <div class="section-header">
-            <h2>Agendamentos</h2>
+            <h2>📅 Agendamentos</h2>
+          </div>
+
+          <!-- BARRA DE PESQUISA GERAL -->
+          <div class="card" style="margin-bottom: 20px;">
+            <input type="text" id="searchAgendamentosGeral" class="search-input" placeholder="🔍 Pesquise por cliente, contrato, responsável, contato ou OS..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;">
           </div>
 
           <!-- FILTROS -->
           <div class="card" style="margin-bottom: 20px;">
             <div class="filters-grid">
-              <div class="filter-group">
-                <label>Cliente:</label>
-                <input type="text" id="filterAgendamentoCliente" placeholder="Buscar cliente...">
-              </div>
-
               <div class="filter-group">
                 <label>Responsável:</label>
                 <select id="filterAgendamentoResponsavel">
@@ -297,27 +297,26 @@
               </div>
 
               <div class="filter-group">
-                <label>Data (De):</label>
+                <label>Data Inicial:</label>
                 <input type="date" id="filterAgendamentoDataDe">
               </div>
 
               <div class="filter-group">
-                <label>Data (Até):</label>
-                <div style="display: flex; gap: 10px;">
-                  <input type="date" id="filterAgendamentoDataAte">
-                  <button id="btnAteHoje" class="btn btn-secondary" style="white-space: nowrap;">Até Hoje</button>
-                </div>
+                <label>Data Final:</label>
+                <input type="date" id="filterAgendamentoDataAte">
               </div>
 
-              <button id="applyAgendamentosFiltersBtn" class="btn btn-primary" style="align-self: flex-end;">
-                🔍 Filtrar
-              </button>
+              <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <button id="btnAteHoje" class="btn btn-secondary" style="white-space: nowrap;">📌 Até Hoje</button>
+                <button id="applyAgendamentosFiltersBtn" class="btn btn-primary" style="white-space: nowrap;">🔍 Filtrar</button>
+                <button id="exportAgendamentosExcelBtn" class="btn btn-success" style="white-space: nowrap;">📊 Excel</button>
+                <button id="exportAgendamentosCSVBtn" class="btn btn-info" style="white-space: nowrap;">📄 CSV</button>
+              </div>
+            </div>
+          </div>
 
-              <button id="exportAgendamentosExcelBtn" class="btn btn-success" style="align-self: flex-end;">
-                📊 Excel
-              </button>
-
-              <button id="exportAgendamentosCSVBtn" class="btn btn-info" style="align-self: flex-end;">
+          <!-- LISTA DE AGENDAMENTOS -->
+          <div class="card">
                 📄 CSV
               </button>
             </div>
