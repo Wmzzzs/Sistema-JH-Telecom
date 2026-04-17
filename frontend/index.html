@@ -303,11 +303,22 @@
 
               <div class="filter-group">
                 <label>Data (Até):</label>
-                <input type="date" id="filterAgendamentoDataAte">
+                <div style="display: flex; gap: 10px;">
+                  <input type="date" id="filterAgendamentoDataAte">
+                  <button id="btnAteHoje" class="btn btn-secondary" style="white-space: nowrap;">Até Hoje</button>
+                </div>
               </div>
 
               <button id="applyAgendamentosFiltersBtn" class="btn btn-primary" style="align-self: flex-end;">
                 🔍 Filtrar
+              </button>
+
+              <button id="exportAgendamentosExcelBtn" class="btn btn-success" style="align-self: flex-end;">
+                📊 Excel
+              </button>
+
+              <button id="exportAgendamentosCSVBtn" class="btn btn-info" style="align-self: flex-end;">
+                📄 CSV
               </button>
             </div>
           </div>

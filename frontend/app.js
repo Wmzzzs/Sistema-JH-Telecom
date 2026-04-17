@@ -960,21 +960,28 @@ function applyAgendamentosFilters() {
     if (responsavel && agendamento.responsavel !== responsavel) return false;
     
     if (dataDe) {
-      const dataAgend = new Date(agendamento.data_agendamento);
-      const dataFiltro = new Date(dataDe);
-      if (dataAgend < dataFiltro) return false;
+      // Converter YYYY-MM-DD para data
+      const dataAgend = agendamento.data_agendamento.split('/').reverse().join('-');
+      if (dataAgend < dataDe) return false;
     }
     
     if (dataAte) {
-      const dataAgend = new Date(agendamento.data_agendamento);
-      const dataFiltro = new Date(dataAte);
-      if (dataAgend > dataFiltro) return false;
+      // Converter YYYY-MM-DD para data
+      const dataAgend = agendamento.data_agendamento.split('/').reverse().join('-');
+      if (dataAgend > dataAte) return false;
     }
     
     return true;
   });
   
   renderAgendamentosTable();
+}
+
+// BTÃ£O "ATÃ‰ HOJE"
+function setDataAteHoje() {
+  const hoje = new Date().toISOString().split('T')[0];
+  document.getElementById('filterAgendamentoDataAte').value = hoje;
+  applyAgendamentosFilters();
 }
 
 function renderAgendamentosTable() {
@@ -1001,12 +1008,63 @@ function renderAgendamentosTable() {
   `).join('');
 }
 
+// 📊 EXPORTAR AGENDAMENTOS EM EXCEL
+function exportarAgendamentosExcel() {
+  const responsavel = document.getElementById('filterAgendamentoResponsavel').value;
+  const dataDe = document.getElementById('filterAgendamentoDataDe').value;
+  const dataAte = document.getElementById('filterAgendamentoDataAte').value;
+  
+  let url = `${API_BASE}/orders/agendamentos/exportar/excel`;
+  const params = new URLSearchParams();
+  if (responsavel) params.append('atendente', responsavel);
+  if (dataDe) params.append('data_inicio', dataDe);
+  if (dataAte) params.append('data_fim', dataAte);
+  
+  if (params.toString()) {
+    url += '?' + params.toString();
+  }
+  
+  showLoading('Gerando relatório Excel...');
+  setTimeout(() => {
+    hideLoading();
+    window.location.href = url;
+  }, 500);
+}
+
+// 📄 EXPORTAR AGENDAMENTOS EM CSV
+function exportarAgendamentosCSV() {
+  const responsavel = document.getElementById('filterAgendamentoResponsavel').value;
+  const dataDe = document.getElementById('filterAgendamentoDataDe').value;
+  const dataAte = document.getElementById('filterAgendamentoDataAte').value;
+  
+  let url = `${API_BASE}/orders/agendamentos/exportar/csv`;
+  const params = new URLSearchParams();
+  if (responsavel) params.append('atendente', responsavel);
+  if (dataDe) params.append('data_inicio', dataDe);
+  if (dataAte) params.append('data_fim', dataAte);
+  
+  if (params.toString()) {
+    url += '?' + params.toString();
+  }
+  
+  showLoading('Gerando relatório CSV...');
+  setTimeout(() => {
+    hideLoading();
+    window.location.href = url;
+  }, 500);
+}
+
 // Event listeners dos filtros
 document.getElementById('applyAgendamentosFiltersBtn').addEventListener('click', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoCliente').addEventListener('keyup', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoResponsavel').addEventListener('change', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoDataDe').addEventListener('change', applyAgendamentosFilters);
 document.getElementById('filterAgendamentoDataAte').addEventListener('change', applyAgendamentosFilters);
+document.getElementById('btnAteHoje').addEventListener('click', setDataAteHoje);
+
+// Event listeners dos botões de exportação
+document.getElementById('exportAgendamentosExcelBtn').addEventListener('click', exportarAgendamentosExcel);
+document.getElementById('exportAgendamentosCSVBtn').addEventListener('click', exportarAgendamentosCSV);
 
 // Handler para quando clica no menu Agendamento
 menuItems.forEach(item => {
