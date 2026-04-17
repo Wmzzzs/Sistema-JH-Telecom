@@ -200,7 +200,6 @@
                 <label>Responsável:</label>
                 <select id="filterResponsavel">
                   <option value="">Todos</option>
-                  <!-- Preenchido dinamicamente -->
                 </select>
               </div>
 
@@ -208,7 +207,6 @@
                 <label>Fila:</label>
                 <select id="filterFila">
                   <option value="">Todas</option>
-                  <!-- Preenchido dinamicamente -->
                 </select>
               </div>
 
@@ -216,7 +214,6 @@
                 <label>Prioridade:</label>
                 <select id="filterPrioridade">
                   <option value="">Todas</option>
-                  <!-- Preenchido dinamicamente -->
                 </select>
               </div>
 
@@ -257,7 +254,6 @@
                   </tr>
                 </thead>
                 <tbody id="ordersTableBody">
-                  <!-- Preenchido por JavaScript -->
                 </tbody>
               </table>
             </div>
@@ -278,19 +274,16 @@
             <h2>📅 Agendamentos</h2>
           </div>
 
-          <!-- BARRA DE PESQUISA GERAL -->
           <div class="card">
             <input type="text" id="searchAgendamentosGeral" class="search-input" placeholder="🔍 Pesquise por cliente, contrato, responsável, contato ou OS...">
           </div>
 
-          <!-- FILTROS E BOTÕES -->
           <div class="card">
             <div class="filters-grid">
               <div class="filter-group">
                 <label>Responsável:</label>
                 <select id="filterAgendamentoResponsavel">
                   <option value="">Todos</option>
-                  <!-- Preenchido dinamicamente -->
                 </select>
               </div>
 
@@ -313,7 +306,6 @@
             </div>
           </div>
 
-          <!-- TABELA DE AGENDAMENTOS -->
           <div class="card">
             <h3 class="card-title">Agendamentos Confirmados</h3>
             <div class="table-wrapper">
@@ -330,7 +322,6 @@
                   </tr>
                 </thead>
                 <tbody id="agendamentosTableBody">
-                  <!-- Preenchido dinamicamente -->
                 </tbody>
               </table>
             </div>
@@ -350,14 +341,12 @@
             <div class="card">
               <h3 class="card-title">Usuários Cadastrados</h3>
               <div class="users-list" id="usersList">
-                <!-- Preenchido por JavaScript -->
               </div>
             </div>
 
             <div class="card">
               <h3 class="card-title">Status Online</h3>
               <div id="onlineStatus" class="status-badge-list">
-                <!-- Preenchido por JavaScript -->
               </div>
             </div>
           </div>
@@ -369,7 +358,6 @@
             <h2>Administração</h2>
           </div>
 
-          <!-- FILE IMPORTS -->
           <div class="card">
             <h3 class="card-title">Importar Dados</h3>
             <div class="import-grid">
@@ -397,12 +385,10 @@
             </div>
           </div>
 
-          <!-- ATENDENTES POR TIPO DE SERVIÇO -->
           <div class="card">
             <h3 class="card-title">⚙️ Atendentes por Tipo de Serviço</h3>
             <p class="card-description">Configure qual atendente atende cada tipo de serviço para distribuição automática</p>
             <div id="configAtendentesDiv" class="config-atendentes">
-              <!-- Preenchido por JavaScript -->
             </div>
             <button id="salvarConfigBtn" class="btn btn-primary">
               ✅ Salvar Configuração
@@ -410,7 +396,6 @@
             <div id="configStatus" class="status-message"></div>
           </div>
 
-          <!-- DISTRIBUIÇÃO -->
           <div class="card">
             <h3 class="card-title">Distribuir Ordens</h3>
             <p class="card-description">Distribui as ordens sem responsável entre os atendentes por tipo de serviço (método round-robin)</p>
@@ -420,20 +405,16 @@
             <div id="distributionStatus" class="status-message"></div>
           </div>
 
-          <!-- GERENCIAMENTO DE USUÁRIOS -->
           <div class="card">
             <h3 class="card-title">Gerenciar Status dos Usuários</h3>
             <div id="userManagementDiv" class="user-management-grid">
-              <!-- Preenchido por JavaScript -->
             </div>
             <div id="userStatusMessage" class="status-message"></div>
           </div>
 
-          <!-- ESTATÍSTICAS -->
           <div class="card">
             <h3 class="card-title">Estatísticas Gerais</h3>
             <div id="adminStats" class="admin-stats">
-              <!-- Preenchido por JavaScript -->
             </div>
           </div>
         </section>
@@ -443,14 +424,15 @@
   </div>
 
   <!-- MODALS -->
-  <div id="loadingModal" class="modal">
+  <!-- ✅ CORRIGIDO: display:none em todos os modais -->
+  <div id="loadingModal" class="modal" style="display: none;">
     <div class="modal-content modal-loading">
       <div class="spinner"></div>
       <p id="loadingText">Carregando...</p>
     </div>
   </div>
 
-  <div id="confirmModal" class="modal">
+  <div id="confirmModal" class="modal" style="display: none;">
     <div class="modal-content">
       <h3 id="confirmTitle">Confirmação</h3>
       <p id="confirmMessage"></p>
@@ -461,7 +443,7 @@
     </div>
   </div>
 
-  <div id="successModal" class="modal">
+  <div id="successModal" class="modal" style="display: none;">
     <div class="modal-content">
       <h3>✅ Sucesso</h3>
       <p id="successMessage"></p>
@@ -471,7 +453,7 @@
     </div>
   </div>
 
-  <div id="errorModal" class="modal">
+  <div id="errorModal" class="modal" style="display: none;">
     <div class="modal-content">
       <h3>❌ Erro</h3>
       <p id="errorMessage"></p>
@@ -482,7 +464,7 @@
   </div>
 
   <!-- MODAL DE AGENDAMENTO -->
-  <div id="agendamentoModal" class="modal">
+  <div id="agendamentoModal" class="modal" style="display: none;">
     <div class="modal-content">
       <h3>📅 Agendar Ordem de Serviço</h3>
       <form id="agendamentoForm" class="agendamento-form">
