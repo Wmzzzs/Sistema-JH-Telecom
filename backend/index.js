@@ -16,6 +16,11 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// ✅ Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 try {
   const orderRoutes = require('./src/routes/orderRoutes');
   const adminRoutes = require('./src/routes/adminRoutes');
